@@ -1,12 +1,61 @@
-# React + Vite
+flowchart LR
+  subgraph C1["Clients"]
+    U[User (Web/Mobile)]
+  end
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+  subgraph FE1["Frontend"]
+    FE[React App / Amplify UI]
+  end
 
-Currently, two official plugins are available:
+  subgraph Amplify_API["API Layer"]
+    GQL[(GraphQL API "jaznu")]
+    REST[(REST API "jaznuRest")]
+  end
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+  subgraph Auth["Cognito"]
+    CU[User Pool]
+    TRG((Signup Trigger))
+  end
 
-## Expanding the ESLint configuration
+  subgraph Lambdas["Business Logic Lambdas"]
+    L1[jaznuCognitoSignupTriggerLambda]
+    L2[jaznuChangeSubscriptionPlanLambda]
+    L3[jaznuHandleSubscriptionPlanLambda]
+    L4[jaznuPingLambda]
+  end
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+  subgraph Storage["Data Stores"]
+    DDB[(DynamoDB tables from @model)]
+    S3[(S3 buckets: images/assets)]
+  end
+
+  subgraph External["External Integrations"]
+    PSP[Payment Providers (PSP)]
+    RMS[Restaurant Mgmt System]
+  end
+
+  subgraph Envs["Environments"]
+    DEV[dev]
+    DEVMB[devmb]
+    PROD[prod]
+  end
+
+  U --> FE --> GQL
+  FE --> REST
+  FE -->|Auth| CU
+  CU -->|on signup| TRG --> L1
+  GQL <-->|App data| DDB
+  REST --> L2
+  REST --> L3
+  L2 --> DDB
+  L3 --> DDB
+  FE --> S3
+  L2 --> PSP
+  L3 --> PSP
+  L2 -.optional.-> RMS
+  L3 -.optional.-> RMS
+
+  Envs -.separate stacks & resources.-> Amplify_API
+  Envs -.separate stacks & resources.-> Auth
+  Envs -.separate stacks & resources.-> Lambdas
+  Envs -.separate stacks & resources.-> Storage
